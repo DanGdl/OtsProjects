@@ -1,4 +1,4 @@
-archive_checker:
+archive_checker: archive_check.c
 	gcc -Wall -Wextra -Wpedantic -std=c11 archive_check.c -o archive_checker
 
 all: archive_checker

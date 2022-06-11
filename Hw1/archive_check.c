@@ -7,9 +7,13 @@
 #include <stdint.h>
 
 
-#define SIGNATURE_END_OF_CENTERAL_RECORD 0x06054b50
-#define OFFSET_TOTAL_ENTRIES 10 // offset from SIGNATURE_END_OF_CENTERAL_RECORD
+// #define SIGNATURE_START_OF_CENTRAL_RECORD 0x02014b50
+#define SIGNATURE_END_OF_CENTRAL_RECORD 0x06054b50
+#define SIGNATURE_START_OF_RECORD 0x04034b50
 
+#define OFFSET_CENTRAL_ENTRY_SIZE 12    // offset from SIGNATURE_END_OF_CENTERAL_RECORD
+#define OFFSET_ENTRY_NAME_SIZE 26       // offset from SIGNATURE_START_OF_RECORD
+#define OFFSET_ENTRY_NAME 30            // offset from SIGNATURE_START_OF_RECORD
 
 
 int main(int argc, char* argv[]) {
@@ -40,13 +44,25 @@ int main(int argc, char* argv[]) {
             close(fd);
             return 0;
         }
-        uint16_t total_entires = 0;
-        for (int i = stats.st_size - 1; i >= 0; i--) {
+        uint16_t current_entry = 0;
+        for (long int i = stats.st_size - 1; i >= 0; i--) {
             uint32_t signature = 0;
             memcpy(&signature, mapped + i, sizeof(signature));
-            if (signature == SIGNATURE_END_OF_CENTERAL_RECORD) {
-                memcpy(&total_entires, mapped + i + OFFSET_TOTAL_ENTRIES, sizeof(total_entires));
-                break;
+            if (signature == SIGNATURE_END_OF_CENTRAL_RECORD) {
+                uint32_t central_dir_size = 0;
+                memcpy(&central_dir_size, mapped + i + OFFSET_CENTRAL_ENTRY_SIZE, sizeof(central_dir_size));
+
+                // jump to beginning of central entry
+                i = i - central_dir_size + 1;
+            } else if (signature == SIGNATURE_START_OF_RECORD) {
+                uint16_t name_size = 0;
+                memcpy(&name_size, mapped + i + OFFSET_ENTRY_NAME_SIZE, sizeof(name_size));
+
+                char name[name_size + 1];
+                memcpy(&name, mapped + i + OFFSET_ENTRY_NAME, sizeof(name));
+                name[name_size] = '\0';
+                printf("Record %04d name %s\n", current_entry, (char*) &name);
+                current_entry++;
             }
         }
 
@@ -55,10 +71,8 @@ int main(int argc, char* argv[]) {
         }
         close(fd);
 
-        if (total_entires == 0) {
+        if (current_entry == 0) {
             printf("File doesn't contains zip archive\n");
-        } else {
-            printf("File contains zip archive, total entries count %d\n", total_entires);
         }
     }
     return 0;

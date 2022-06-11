@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
     } else if (!S_ISREG(stats.st_mode)) {
         printf("File is not regular file, path %s\n", path);
     } else {
-        int fd = open(path, O_RDONLY, S_IRUSR | S_IWUSR);
+        int fd = open(path, O_RDONLY);
         if (fd < 0) {
             printf("Failed to open file %s\n", path);
             return 0;

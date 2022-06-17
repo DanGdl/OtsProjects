@@ -12,6 +12,7 @@
 #include "koi8-r.h"
 #include "iso8859_5.h"
 
+#define SIZE_BUFFER_ENCODING 100
 #define SIZE_BUFFER 512
 #define COUNT_ENCODINGS 3
 
@@ -44,13 +45,14 @@ const Converter_t encodings[COUNT_ENCODINGS] = {
 int main(int argc, char* argv[]) {
     char* input_path = NULL;
 	char* output_path = NULL;
-	char encoding[50] = { '\0' };
+	char encoding[SIZE_BUFFER_ENCODING] = { '\0' };
     if (argc == 4) {
         input_path = argv[1];
 		output_path = argv[3];
 		char* source = argv[2];
 		char* result = encoding;
-		while(*source != '\0') {
+        const char* const end = encoding + SIZE_BUFFER_ENCODING - 1;
+		while(*source != '\0' && result != end) {
 			*result = tolower(*source);
 			source++;
 			result++;

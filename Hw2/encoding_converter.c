@@ -13,7 +13,6 @@
 #include "iso8859_5.h"
 
 #define SIZE_BUFFER_ENCODING 100
-#define SIZE_BUFFER 512
 #define COUNT_ENCODINGS 3
 
 
@@ -103,32 +102,23 @@ int main(int argc, char* argv[]) {
 			if (mapped == MAP_FAILED) {
 				printf("Failed to map file to memory\n");
 			} else {
-				uint8_t buffer[SIZE_BUFFER] = { 0 };
-
                 // unicode encoding mark?!
-				buffer[0] = 0xFF;
-				buffer[1] = 0xFE;
-				size_t idx = 2;
-
+				uint8_t tmpS = 0XFF;
+				fwrite(tmpS, sizeof(tmpS), 1, output);
+				tmpS = 0xFE;
+				fwrite(tmpS, sizeof(tmpS), 1, output);
 				for (long int i = 0; i < stats.st_size; i++) {
 					uint8_t symbol = 0;
 					memcpy(&symbol, mapped + i, sizeof(symbol));
-					uint16_t s = (*converter -> converter)(symbol);
+					uint16_t s = (converter -> converter)(symbol);
 					size_t j = 0;
 					while (j < sizeof(s)) {
 						int shift = (j * 8);
-						uint8_t tmpS = (s >> shift);
-						buffer[idx] = tmpS;
-						idx++;
+						tmpS = (s >> shift);
+						fwrite(tmpS, sizeof(tmpS), 1, output);
 						j++;
 					}
-					if (idx % SIZE_BUFFER == 0) {
-						fwrite(buffer, sizeof(*buffer), SIZE_BUFFER, output);
-						memset(buffer, 0, sizeof(buffer));
-						idx = 0;
-					}
 				}
-                fwrite(buffer, sizeof(*buffer), idx, output);
 				fflush(output);
 
 				if (munmap(mapped, stats.st_size) != 0) {

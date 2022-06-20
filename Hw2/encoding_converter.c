@@ -7,7 +7,6 @@
 #include <stdint.h>
 #include <ctype.h>		// tolower
 
-
 #include "cp1251.h"
 #include "koi8-r.h"
 #include "iso8859_5.h"
@@ -25,6 +24,7 @@ typedef struct Converter {
 uint16_t cp1251_to_unicode(uint8_t symbol);
 uint16_t iso8859_5_to_unicode(uint8_t symbol);
 uint16_t koi8_to_unicode(uint8_t symbol);
+uint32_t unicode_to_utf8(uint16_t symbol);
 
 const Converter_t encodings[COUNT_ENCODINGS] = {
     {
@@ -60,15 +60,15 @@ int main(int argc, char* argv[]) {
         printf("Please add a path to input file to parameters, encoding and path to output file: encoding_converter input_file_path encoding outpu_file_path.\n");
         return 0;
     }
-    const Converter_t* converter = NULL;
+    const Converter_t* to_unicode_mapper = NULL;
     for (int i = 0; i < COUNT_ENCODINGS; i++) {
         if (strcmp(encoding, encodings[i].name) == 0) {
-            converter = &encodings[i];
+            to_unicode_mapper = &encodings[i];
             break;
         }
     }
 
-    if (converter == NULL) {
+    if (to_unicode_mapper == NULL) {
         printf("Encoding %s is not supported. Supported encodings:", encoding);
         for (int i = 0; i < COUNT_ENCODINGS; i++) {
             if (i == COUNT_ENCODINGS - 1) {
@@ -102,21 +102,22 @@ int main(int argc, char* argv[]) {
 			if (mapped == MAP_FAILED) {
 				printf("Failed to map file to memory\n");
 			} else {
-                // unicode encoding mark?!
-				uint8_t tmpS = 0XFF;
-				fwrite(tmpS, sizeof(tmpS), 1, output);
-				tmpS = 0xFE;
-				fwrite(tmpS, sizeof(tmpS), 1, output);
 				for (long int i = 0; i < stats.st_size; i++) {
 					uint8_t symbol = 0;
 					memcpy(&symbol, mapped + i, sizeof(symbol));
-					uint16_t s = (converter -> converter)(symbol);
-					size_t j = 0;
-					while (j < sizeof(s)) {
+					uint32_t utf = unicode_to_utf8((to_unicode_mapper -> converter)(symbol));
+					if (utf == -1) {
+						// unsupported case
+						continue;
+					}
+					int j = sizeof(utf) - 1;
+					while (j >= 0) {
 						int shift = (j * 8);
-						tmpS = (s >> shift);
-						fwrite(tmpS, sizeof(tmpS), 1, output);
-						j++;
+						uint8_t tmp = (utf >> shift);
+						if (tmp != 0 || j == 0) {
+							fputc(tmp, output);
+						}
+						j--;
 					}
 				}
 				fflush(output);
@@ -132,11 +133,27 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-
-uint16_t cp1251_to_unicode(uint8_t symbol) {
-	return cp_1252_symbols[symbol];
+uint32_t unicode_to_utf8(uint16_t symbol) {
+	// one byte symbol
+	if ((symbol >> 7) == 0) {
+		return symbol;
+	}
+	else if ((symbol >> 12) == 0) {
+		uint16_t result = 0x3F & symbol;// get first 6 bits
+		result = 0x80 | result;			// turn on first of 8 bits
+		uint16_t tmp = symbol >> 6;		// get other bytes
+		result = (tmp << 8) | result;
+		result = 0xC000 | result;		// turn on first 2 bit of 16 bits
+		return result;
+	} else {
+		printf("Unsupported unicode symbol\n");
+		return -1;
+	}
 }
 
+uint16_t cp1251_to_unicode(uint8_t symbol) {
+ 	return cp_1252_symbols[symbol];
+}
 
 uint16_t iso8859_5_to_unicode(uint8_t symbol) {
 	return iso8859_5_symbols[symbol];

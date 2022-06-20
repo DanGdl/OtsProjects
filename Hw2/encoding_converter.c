@@ -24,7 +24,7 @@ typedef struct Converter {
 uint16_t cp1251_to_unicode(uint8_t symbol);
 uint16_t iso8859_5_to_unicode(uint8_t symbol);
 uint16_t koi8_to_unicode(uint8_t symbol);
-uint32_t unicode_to_utf8(uint16_t symbol);
+int32_t unicode_to_utf8(uint16_t symbol);
 
 const Converter_t encodings[COUNT_ENCODINGS] = {
     {
@@ -105,7 +105,7 @@ int main(int argc, char* argv[]) {
 				for (long int i = 0; i < stats.st_size; i++) {
 					uint8_t symbol = 0;
 					memcpy(&symbol, mapped + i, sizeof(symbol));
-					uint32_t utf = unicode_to_utf8((to_unicode_mapper -> converter)(symbol));
+					int32_t utf = unicode_to_utf8((to_unicode_mapper -> converter)(symbol));
 					if (utf == -1) {
 						// unsupported case
 						continue;
@@ -133,7 +133,7 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-uint32_t unicode_to_utf8(uint16_t symbol) {
+int32_t unicode_to_utf8(uint16_t symbol) {
 	// one byte symbol
 	if ((symbol >> 7) == 0) {
 		return symbol;

@@ -6,6 +6,8 @@
 #define TEMPLATE_LINKED_LIST_EMPTY "LinkedList[]"
 #define TEMPLATE_LINKED_LIST "LinkedList[ %s ]"
 
+
+
 typedef struct ListNode {
     struct ListNode* next;
     struct ListNode* prev;

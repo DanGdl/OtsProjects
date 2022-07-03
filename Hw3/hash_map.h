@@ -12,42 +12,40 @@
 typedef struct HashMap HashMap_t;
 
 
-HashMap_t* HashMap_create(size_t (*hash_func)(const void* const key));
+HashMap_t* HashMap_create(
+	size_t (*hash_func)(const void* const key), void (*key_free)(void* key), 
+	int (*key_compare)(const void* const key1, const void* const key2)
+);
 
 int64_t HashMap_size(const HashMap_t* const map);
 
-int HashMap_add(HashMap_t* map, void* key, void* data);
+int HashMap_add(HashMap_t* map, void* key, void* value);
 
-void HashMap_remove(
-    HashMap_t* map, const void* const key, void** data, void (*key_free)(void* key)
-);
+void HashMap_remove(HashMap_t* map, const void* const key, void** value);
 
-void* HashMap_get(
-    const HashMap_t* const map, const void* const key,
-    int (*key_compare)(const void* const key1, const void* const key2)
-);
+void* HashMap_get(const HashMap_t* const map, const void* const key);
 
 LinkedList_t* HashMap_get_values(HashMap_t* map);
 
-void HashMap_clear_and_free(HashMap_t* map,	void (*key_free)(void* key), void (*value_free)(void* item));
+void HashMap_clear_and_free(HashMap_t* map, void (*value_free)(void* item));
 
 
 char* HashMap_stringify(
     const void* const p_map,
     char* (*key_stringify)(const void* const key),
-    char* (*item_stringify)(const void* const item)
+    char* (*value_stringify)(const void* const value)
 );
 
 size_t HashMap_hash(
     const void* const p_map,
     size_t (*key_hash)(const void* const key),
-    size_t (*item_hash)(const void* const item)
+    size_t (*value_hash)(const void* const value)
 );
 
 int HashMap_compare(
     const void* const p_map1, const void* const p_map2,
     int (*key_compare)(const void* const key1, const void* const key2),
-    int (*item_compare)(const void* const item1, const void* const item2)
+    int (*value_compare)(const void* const value1, const void* const value2)
 );
 
 #endif

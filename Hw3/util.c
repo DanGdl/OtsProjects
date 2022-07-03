@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
+
 size_t hash_string(const char* const value) {
     if (value == NULL) {
         return 0;

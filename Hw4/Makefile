@@ -1,5 +1,5 @@
-weather: weather.c
-	gcc -Wall -Wextra -Wpedantic -std=c11 weather.c -o weather
+weather: main_weather.c parser_json.c
+	gcc -Wall -Wextra -Wpedantic -std=c11 main_weather.c parser_json.c -l curl -l json-c -o weather
 
 all: weather
 

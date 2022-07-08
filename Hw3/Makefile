@@ -1,5 +1,5 @@
- dgd_hash_map: hash_map.c main.c util.c linked_list.c
-	gcc -Wall -Wextra -Wpedantic -std=c11 hash_map.c main.c util.c linked_list.c -o dgd_hash_map
+ dgd_hash_map: hash_map.c main.c util.c
+	gcc -g -Wall -Wextra -Wpedantic -std=c11 hash_map.c main.c util.c -o dgd_hash_map
 
 all: dgd_hash_map
 

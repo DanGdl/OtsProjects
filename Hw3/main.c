@@ -13,6 +13,7 @@
 #include <unistd.h>     // open/close
 #include <string.h>
 #include <ctype.h>
+#include <stdint.h>
 
 #include "hash_map.h"
 #include "util.h"
@@ -30,12 +31,17 @@ size_t hash_key(const void* const value) {
 }
 
 int compare_key(const void* const key1, const void* const key2) {
-	return strncmp(key1, key2, STRING_COMPARE_MAX);
+	if (key1 == NULL && key2 != NULL) {
+		return 1;
+	} else if (key1 != NULL && key2 == NULL) {
+		return -1;
+	}
+	return key1 == key2 || strncmp(key1, key2, STRING_COMPARE_MAX);
 }
 
 char* stringify_key(const void* const key) {
     char* buffer = NULL;
-    int size = strlen(key);
+    const int size = strlen(key) + 1;
     buffer = calloc(sizeof(*buffer), size);
     if (buffer == NULL) {
         printf("Failed to allocate buffer for value\n");
@@ -68,8 +74,8 @@ void free_map(HashMap_t* map) {
 
 int count_words(uint8_t* mapping, struct stat* stats) {
     int start_idx = 0;
-    HashMap_t* map = HashMap_create(hash_key, free_pointer, compare_key);
-    
+    HashMap_t* map = HashMap_create(hash_key, compare_key, free_pointer);
+
     for(int i = 0; i < stats -> st_size; i++) {
         if (mapping[i] == ' ' || mapping[i] == '\t'  || mapping[i] == '\n' || !isalpha(mapping[i])) {
             const int end_idx = i;
@@ -77,44 +83,60 @@ int count_words(uint8_t* mapping, struct stat* stats) {
                 start_idx = i + 1;
                 continue;
             }
+            const int length = end_idx - start_idx;
             char* word = NULL;
-            word = calloc(sizeof(*word), end_idx - start_idx);
+            word = calloc(sizeof(*word), length + 1);
             if (word == NULL) {
                 printf("Failed to allocate memory for word\n");
                 free_map(map);
                 return -1;
             }
-            memcpy(word, &mapping[start_idx], sizeof(char) * (end_idx - start_idx));
+            memcpy(word, &mapping[start_idx], sizeof(char) * (length));
+            word[length] = '\0';
             start_idx = i + 1;
-            
-            
+
+
             int* counter = HashMap_get(map, word);
             if (counter == NULL) {
                 int* value = NULL;
                 value = calloc(sizeof(*value), 1);
                 if (value == NULL) {
                     printf("Failed to allocate memory for value\n");
+                    free(word);
                     free_map(map);
                     return -1;
                 }
                 *value = 1;
-                if (HashMap_add(map, word, value) < 0) {
-                    printf("Failed to put key %s and value %d to map\n", word, *value);
-                    free(word);
-                    free(value);
-                    free_map(map);
-                    return -1;
+                int result = HashMap_add(map, word, value);
+                while(1) {
+                	if (result == RESULT_ADD_NODE_ALREDY_EXIST) {
+						void** old_counter = NULL;
+						HashMap_remove(map, word, old_counter);
+						free(*old_counter);
+
+						result = HashMap_add(map, word, value);
+					} else if (result < 0) {
+						printf("Failed to put key %s and value %d to map\n", word, *value);
+						free(word);
+						free(value);
+
+						free_map(map);
+						return -1;
+					} else {
+						break;
+					}
                 }
+
             } else {
+                free(word);
                 (*counter) += 1;
             }
-
         }
     }
     char* string = HashMap_stringify(map, stringify_key, stringify_value);
     printf("%s\n", string);
     free(string);
-	
+
 	free_map(map);
 	map = NULL;
     return 0;

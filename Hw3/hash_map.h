@@ -2,19 +2,23 @@
 #ifndef HASH_MAP_H_
 #define HASH_MAP_H_
 
-#include "linked_list.h"
 #include "util.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
+
+
+#define RESULT_ADD_NODE_ALREDY_EXIST 1
 
 typedef struct HashMap HashMap_t;
 
 
 HashMap_t* HashMap_create(
-	size_t (*hash_func)(const void* const key), void (*key_free)(void* key), 
-	int (*key_compare)(const void* const key1, const void* const key2)
+	size_t (*hash_func)(const void* const key),
+	int (*key_compare)(const void* const key1, const void* const key2),
+	void (*key_free)(void* key)
 );
 
 int64_t HashMap_size(const HashMap_t* const map);
@@ -25,9 +29,7 @@ void HashMap_remove(HashMap_t* map, const void* const key, void** value);
 
 void* HashMap_get(const HashMap_t* const map, const void* const key);
 
-LinkedList_t* HashMap_get_values(HashMap_t* map);
-
-void HashMap_clear_and_free(HashMap_t* map, void (*value_free)(void* item));
+int HashMap_clear_and_free(HashMap_t* map, void (*value_free)(void* item));
 
 
 char* HashMap_stringify(

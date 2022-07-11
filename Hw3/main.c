@@ -39,30 +39,13 @@ int compare_key(const void* const key1, const void* const key2) {
 	return key1 == key2 || strncmp(key1, key2, STRING_COMPARE_MAX);
 }
 
-char* stringify_key(const void* const key) {
-    char* buffer = NULL;
-    const int size = strlen(key) + 1;
-    buffer = calloc(sizeof(*buffer), size);
-    if (buffer == NULL) {
-        printf("Failed to allocate buffer for value\n");
-        return NULL;
-    }
-    memcpy(buffer, key, sizeof(char) * size);
-	return buffer;
+
+void print_key(const void* const key) {
+   printf("%s", (char*) key);
 }
 
-char* stringify_value(const void* const value) {
-    const int* number = (int*) value;
-	char* buffer = NULL;
-    int size = *number < 10 ? 2 : 3;
-    buffer = calloc(sizeof(*buffer), size);
-    if (buffer == NULL) {
-        printf("Failed to allocate buffer for value\n");
-        return NULL;
-    }
-    sprintf(buffer, "%d", *number);
-    buffer[size - 1] = '\0';
-    return buffer;
+void print_value(const void* const value) {
+   printf("%d", *((int*) value));
 }
 
 void free_map(HashMap_t* map) {
@@ -110,9 +93,9 @@ int count_words(uint8_t* mapping, struct stat* stats) {
                 int result = HashMap_add(map, word, value);
                 while(1) {
                 	if (result == RESULT_ADD_NODE_ALREDY_EXIST) {
-						void** old_counter = NULL;
-						HashMap_remove(map, word, old_counter);
-						free(*old_counter);
+						void* old_counter = NULL;
+						HashMap_remove(map, word, &old_counter);
+						free(old_counter);
 
 						result = HashMap_add(map, word, value);
 					} else if (result < 0) {
@@ -133,10 +116,14 @@ int count_words(uint8_t* mapping, struct stat* stats) {
             }
         }
     }
-    char* string = HashMap_stringify(map, stringify_key, stringify_value);
-    printf("%s\n", string);
-    free(string);
+    HashMap_print(map, print_key, print_value);
 
+    /*
+    void* item = NULL;
+    HashMap_remove(map, "gxeneraso", &item);
+    free(item);
+    */
+    
 	free_map(map);
 	map = NULL;
     return 0;

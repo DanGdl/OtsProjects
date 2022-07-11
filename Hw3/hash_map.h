@@ -31,6 +31,11 @@ void* HashMap_get(const HashMap_t* const map, const void* const key);
 
 int HashMap_clear_and_free(HashMap_t* map, void (*value_free)(void* item));
 
+void HashMap_print(
+	const HashMap_t* const p_map,
+	void (*print_key)(const void* const key),
+	void (*print_value)(const void* const value)
+);
 
 char* HashMap_stringify(
     const void* const p_map,

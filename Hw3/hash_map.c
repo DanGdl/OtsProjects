@@ -1,11 +1,8 @@
 
-
 #include "hash_map.h"
-
 #include <stdint.h>
 #include <stdbool.h>
 #include <math.h>
-
 
 
 #define ITEM_NULL "NULL"
@@ -19,11 +16,11 @@
 #define RESULT_ADD_NODE_RESIZE 1
 
 
+
 typedef struct MapNode {
     void* key;
     void* value;
 } MapNode_t;
-
 
 
 typedef struct HashMap {
@@ -34,6 +31,7 @@ typedef struct HashMap {
     int64_t size;
     int64_t capacity;
 } HashMap_t;
+
 
 
 
@@ -70,14 +68,12 @@ int64_t HashMap_size(const HashMap_t* const map) {
     return map -> size;
 }
 
-
 int are_keys_same(
 	int (*key_compare)(const void* const key1, const void* const key2),
 	const void* const key1, const void* const key2
 ) {
 	return key_compare(key1, key2) == 0;
 }
-
 
 int add_node(
 	MapNode_t** array, int64_t capacity, MapNode_t* node, void* pKey, void* pData,
@@ -91,17 +87,25 @@ int add_node(
 
 	void* key = pKey == NULL ? node -> key : pKey;
 	void* data = pData == NULL ? node -> value : pData;
-
 	const size_t key_hash = hash_func(key);
 	const int position = key_hash % (capacity);
 
-	for (int i = position; i < capacity; i++) {
-		MapNode_t* tmp_node = *(array + i);
+
+    int i = position;
+    do {
+    	if (i == capacity) {
+    		i = 0;
+    		if (i == position) {
+    			break;
+    		}
+    	}
+    	int idx = i % capacity;
+    	MapNode_t* tmp_node = *(array + idx);
 		if (tmp_node != NULL && are_keys_same(key_compare, tmp_node -> key, key)) {
 			return RESULT_ADD_NODE_ALREDY_EXIST;
 		}
-	}
-
+		i++;
+    } while (i != position);
 
 	if (node == NULL) {
 		node = malloc(sizeof(*node));
@@ -113,14 +117,26 @@ int add_node(
 		node -> value = data;
 	}
 
-	for (int i = position; i < capacity; i++) {
-		if (*(array + i) == NULL) {
-			*(array + i) = node;
+	i = position;
+	do {
+		if (i == capacity) {
+			i = 0;
+			if (i == position) {
+				break;
+			}
+		}
+		int idx = i % capacity;
+		if (*(array + idx) == NULL) {
+			*(array + idx) = node;
 			return 0;
 		}
-	}
+		i++;
+	} while (i != position);
 
-	free(node);
+	// free node only if it's created here
+	if (pKey == NULL) {
+		free(node);
+	}
 	return RESULT_ADD_NODE_RESIZE;
 }
 
@@ -145,6 +161,7 @@ int resize_map(HashMap_t* map, bool forced) {
 		if (node == NULL) {
 			continue;
 		}
+
 		if(add_node(new_array, new_cap, node, NULL, NULL, map -> key_compare, map -> hash_func) < 0) {
 			free(new_array);
 			printf("Resize: failed to add node\n");
@@ -162,6 +179,7 @@ int HashMap_add(HashMap_t* map, void* key, void* data) {
     if (map == NULL) {
         return -1;
     }
+
     if (resize_map(map, false) < 0) {
     	return -1;
     }
@@ -183,20 +201,28 @@ int HashMap_add(HashMap_t* map, void* key, void* data) {
 }
 
 
-
 void HashMap_remove(HashMap_t* map, const void* const key, void** data) {
     if (map == NULL) {
         *data = NULL;
         return;
     }
 
-    const size_t key_hash = map -> hash_func(key);
-    const int position = key_hash % (map -> capacity);
+    size_t key_hash = map -> hash_func(key);
+    int position = key_hash % (map -> capacity);
 
-    for (int i = position; i < map -> capacity; i++) {
-    	MapNode_t* node = *(map -> head + i);
-        if (node != NULL && are_keys_same(map -> key_compare, node -> key, key)) {
-        	*data = node -> value;
+    int i = position;
+    do {
+    	if (i == map -> capacity) {
+    		i = 0;
+    		if (i == position) {
+				break;
+			}
+    	}
+    	int idx = i % map -> capacity;
+
+    	MapNode_t* node = *(map -> head + idx);
+		if (node != NULL && are_keys_same(map -> key_compare, node -> key, key)) {
+			*data = node -> value;
 			map -> size -= 1;
 			if (node -> key != NULL) {
 				map -> key_free(node -> key);
@@ -204,11 +230,36 @@ void HashMap_remove(HashMap_t* map, const void* const key, void** data) {
 			}
 			free(node);
 			*(map -> head + i) = NULL;
-            break;
-        }
-    }
-}
+			break;
+		}
+		i++;
+    } while (i != position);
 
+    i = position;
+	do {
+		if (i == map -> capacity) {
+			i = 0;
+			if (i == position) {
+				break;
+			}
+		}
+		int idx = i % map -> capacity;
+
+		MapNode_t* node = *(map -> head + idx);
+		if (node != NULL) {
+			key_hash = map -> hash_func(node -> key);
+			int expected_position = key_hash % (map -> capacity);
+			if (expected_position < idx) {
+				*(map -> head + idx) = NULL;
+				int result = add_node(map -> head, map -> capacity, node, NULL, NULL, map -> key_compare, map -> hash_func);
+				if (result != 0) {
+					*(map -> head + idx) = node;
+				}
+			}
+		}
+		i++;
+	} while (i != position);
+}
 
 
 void* HashMap_get(const HashMap_t* const map, const void* const key) {
@@ -222,13 +273,22 @@ void* HashMap_get(const HashMap_t* const map, const void* const key) {
 
     const size_t key_hash = map -> hash_func(key);
     const int position = key_hash % (map -> capacity);
+    int i = position;
+	do {
+		if (i == map -> capacity) {
+			i = 0;
+			if (i == position) {
+				break;
+			}
+		}
+		int idx = i % map -> capacity;
 
-    for (int i = position; i < map -> capacity; i++) {
-    	MapNode_t* node = *(map -> head + i);
-        if (node != NULL && are_keys_same(map -> key_compare, node -> key, key)) {
-            return node -> value;
-        }
-    }
+		MapNode_t* node = *(map -> head + idx);
+		if (node != NULL && are_keys_same(map -> key_compare, node -> key, key)) {
+			return node -> value;
+		}
+		i++;
+	} while (i != position);
     return NULL;
 }
 
@@ -237,6 +297,7 @@ int HashMap_clear_and_free(HashMap_t* map, void (*value_free)(void* item)) {
     if (map == NULL) {
         return 0;
     }
+
     if (value_free == NULL) {
     	printf("Validation error: value_free pointer is NULL\n");
 		return -1;
@@ -267,14 +328,42 @@ int HashMap_clear_and_free(HashMap_t* map, void (*value_free)(void* item)) {
 
 
 
+
+void HashMap_print(
+	const HashMap_t* const p_map,
+	void (*print_key)(const void* const key),
+	void (*print_value)(const void* const value)
+) {
+	if (p_map == NULL) {
+		return;
+	} else if (HashMap_size(p_map) == 0) {
+		printf(TEMPLATE_HASHMAP_EMPTY);
+	} else {
+		printf("HashMap[\n");
+		for (int i = 0; i < p_map -> capacity; i++) {
+			MapNode_t* node = *(p_map -> head + i);
+			if (node == NULL) {
+				continue;
+			}
+			printf("\t ");
+			print_key(node -> key);
+			printf(" -> ");
+			print_value(node -> value);
+			printf("\n");
+		}
+		printf("]\n");
+	}
+}
+
+
+
 char* HashMapNode_stringify(
     const void* const p_node,
     char* (*key_stringify)(const void* const key),
     char* (*item_stringify)(const void* const item)
 ) {
-
     if (p_node == NULL) {
-        return NULL;
+    	return NULL;
     }
 
     const MapNode_t* const node = (MapNode_t*) p_node;
@@ -297,22 +386,16 @@ char* HashMapNode_stringify(
     } else {
         value_str = item_stringify(node -> value);
     }
-
     if (value_str == NULL) {
         value_str = calloc(sizeof(char), strlen(ITEM_NULL) + 1);
         memcpy(value_str, ITEM_NULL, sizeof(char) * strlen(ITEM_NULL));
     }
-
     item_str = calloc(sizeof(char), strlen(TEMPLATE_NODE) - 2 + strlen(key_str) + strlen(value_str) + 1);
     sprintf(item_str, TEMPLATE_NODE, key_str, value_str);
-
     free(key_str);
     free(value_str);
-
     return item_str;
 }
-
-
 
 char* HashMap_resize_items_str(char* items, const char* const item_str, int extra) {
     if (items == NULL) {
@@ -324,8 +407,6 @@ char* HashMap_resize_items_str(char* items, const char* const item_str, int extr
     }
     return items;
 }
-
-
 
 char* HashMap_stringify(
     const void* const p_map,
@@ -377,7 +458,6 @@ size_t HashMap_hash(
     if (p_map == NULL) {
     	return 0;
     }
-
     size_t hash = 0;
     const HashMap_t* const map = (HashMap_t*) p_map;
     for (int i = 0; i < map -> capacity; ++i) {
@@ -385,14 +465,13 @@ size_t HashMap_hash(
 		if (node == NULL) {
 			continue;
 		}
-
 		size_t node_hash = 0;
 		if (key_hash == NULL) {
 			node_hash = hash_number(node -> key, sizeof(node -> key));
 		} else {
 			node_hash = key_hash(node -> key);
-		}
 
+		}
 		if (item_hash == NULL) {
 			node_hash = hash_number_iteraction(node_hash + hash_number(node -> value, sizeof(node -> value)));
 		} else {
@@ -402,6 +481,7 @@ size_t HashMap_hash(
     }
     return hash_number_end(hash);
 }
+
 
 
 int HashMap_node_compare(
@@ -460,7 +540,6 @@ int HashMap_compare(
     if (p_map1 == p_map2) {
         return 0;
     }
-
     const HashMap_t* const map1 = (HashMap_t*) p_map1;
     const HashMap_t* const map2 = (HashMap_t*) p_map2;
 
@@ -478,3 +557,4 @@ int HashMap_compare(
     }
     return 0;
 }
+

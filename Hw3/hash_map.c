@@ -93,18 +93,17 @@ int add_node(
 
     int i = position;
     do {
-    	if (i == capacity) {
-    		i = 0;
-    		if (i == position) {
-    			break;
-    		}
-    	}
     	int idx = i % capacity;
     	MapNode_t* tmp_node = *(array + idx);
-		if (tmp_node != NULL && are_keys_same(key_compare, tmp_node -> key, key)) {
+    	if (tmp_node == NULL) {
+    		break;
+    	} else if (are_keys_same(key_compare, tmp_node -> key, key)) {
 			return RESULT_ADD_NODE_ALREDY_EXIST;
 		}
 		i++;
+		if (i == capacity) {
+			i = 0;
+		}
     } while (i != position);
 
 	if (node == NULL) {
@@ -119,18 +118,15 @@ int add_node(
 
 	i = position;
 	do {
-		if (i == capacity) {
-			i = 0;
-			if (i == position) {
-				break;
-			}
-		}
 		int idx = i % capacity;
 		if (*(array + idx) == NULL) {
 			*(array + idx) = node;
 			return 0;
 		}
 		i++;
+		if (i == capacity) {
+			i = 0;
+		}
 	} while (i != position);
 
 	// free node only if it's created here
@@ -191,7 +187,7 @@ int HashMap_add(HashMap_t* map, void* key, void* data) {
 				return -1;
 			}
 		} else if (result < 0) {
-			return -1;
+			return result;
 		} else {
 			break;
 		}
@@ -212,16 +208,12 @@ void HashMap_remove(HashMap_t* map, const void* const key, void** data) {
 
     int i = position;
     do {
-    	if (i == map -> capacity) {
-    		i = 0;
-    		if (i == position) {
-				break;
-			}
-    	}
     	int idx = i % map -> capacity;
 
     	MapNode_t* node = *(map -> head + idx);
-		if (node != NULL && are_keys_same(map -> key_compare, node -> key, key)) {
+    	if (node == NULL) {
+    		break;
+    	} else if (are_keys_same(map -> key_compare, node -> key, key)) {
 			*data = node -> value;
 			map -> size -= 1;
 			if (node -> key != NULL) {
@@ -233,16 +225,13 @@ void HashMap_remove(HashMap_t* map, const void* const key, void** data) {
 			break;
 		}
 		i++;
+		if (i == map -> capacity) {
+			i = 0;
+		}
     } while (i != position);
 
     i = position;
 	do {
-		if (i == map -> capacity) {
-			i = 0;
-			if (i == position) {
-				break;
-			}
-		}
 		int idx = i % map -> capacity;
 
 		MapNode_t* node = *(map -> head + idx);
@@ -258,6 +247,9 @@ void HashMap_remove(HashMap_t* map, const void* const key, void** data) {
 			}
 		}
 		i++;
+		if (i == map -> capacity) {
+			i = 0;
+		}
 	} while (i != position);
 }
 
@@ -275,19 +267,18 @@ void* HashMap_get(const HashMap_t* const map, const void* const key) {
     const int position = key_hash % (map -> capacity);
     int i = position;
 	do {
-		if (i == map -> capacity) {
-			i = 0;
-			if (i == position) {
-				break;
-			}
-		}
 		int idx = i % map -> capacity;
 
 		MapNode_t* node = *(map -> head + idx);
-		if (node != NULL && are_keys_same(map -> key_compare, node -> key, key)) {
+		if (node == NULL) {
+			break;
+		} else if (are_keys_same(map -> key_compare, node -> key, key)) {
 			return node -> value;
 		}
 		i++;
+		if (i == map -> capacity) {
+			i = 0;
+		}
 	} while (i != position);
     return NULL;
 }

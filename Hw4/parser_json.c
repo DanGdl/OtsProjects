@@ -11,21 +11,18 @@ void parse_int32(int32_t* destination, struct json_object* tokens, const char* n
     struct json_object* tmp = NULL;
     json_object_object_get_ex(tokens, name, &tmp);
     *destination = json_object_get_int(tmp);
-    free(tmp);
 }
 
 void parse_int64(int64_t* destination, struct json_object* tokens, const char* name) {
     struct json_object* tmp = NULL;
     json_object_object_get_ex(tokens, name, &tmp);
     *destination = json_object_get_int64(tmp);
-    free(tmp);
 }
 
 void parse_float(float* destination, struct json_object* tokens, const char* name) {
     struct json_object* tmp = NULL;
     json_object_object_get_ex(tokens, name, &tmp);
     *destination = json_object_get_double(tmp);
-    free(tmp);
 }
 
 void parse_string(char** destination, struct json_object* tokens, const char* name) {
@@ -37,10 +34,8 @@ void parse_string(char** destination, struct json_object* tokens, const char* na
     *destination = calloc(sizeof(*destination), value_lenght);
     if (*destination == NULL) {
         printf("Failed to allocate memory for name\n");
-        free(tmp);
     }
     memcpy(*destination, value, sizeof(*value) * value_lenght);
-    free(tmp);
 }
 
 
@@ -53,18 +48,17 @@ int parse_weather_json(char* buffer, WeartherInfo_t* weather) {
     weather -> size_weathers = json_object_array_length(tokens);
     weather -> weathers = NULL;
     weather -> weathers = calloc(sizeof(*weather -> weathers), weather -> size_weathers);
-	if (weather -> weathers == NULL) {
-		printf("Failed to allocate memory for name\n");
-		free(tokens);
-		return -1;
-	}
-    for (int i = 0; i < weather -> size_weathers; i++) {
-    	struct json_object* arr_item = json_object_array_get_idx(tokens, i);
-		parse_string(&(weather -> weathers[i].main), arr_item, "main");
-		parse_string(&(weather -> weathers[i].description), arr_item, "description");
-		free(arr_item);
+    if (weather -> weathers == NULL) {
+        printf("Failed to allocate memory for name\n");
+        json_object_put(parsed);
+        return -1;
     }
-    free(tokens);
+    for (int i = 0; i < weather -> size_weathers; i++) {
+        struct json_object* arr_item = json_object_array_get_idx(tokens, i);
+        parse_string(&(weather -> weathers[i].main), arr_item, "main");
+        parse_string(&(weather -> weathers[i].description), arr_item, "description");
+    }
+    tokens = NULL;
     
     parse_string(&(weather -> base), parsed, "base");
     
@@ -75,7 +69,7 @@ int parse_weather_json(char* buffer, WeartherInfo_t* weather) {
     parse_float(&(weather -> main.temp_max), tokens, "temp_max");
     parse_int32(&(weather -> main.pressure), tokens, "pressure");
     parse_int32(&(weather -> main.humidity), tokens, "humidity");
-    free(tokens);
+    tokens = NULL;
     
     parse_int32(&(weather -> visibility), parsed, "visibility");
     
@@ -83,11 +77,11 @@ int parse_weather_json(char* buffer, WeartherInfo_t* weather) {
     parse_float(&(weather -> wind.speed), tokens, "speed");
     parse_float(&(weather -> wind.deg), tokens, "deg");
     parse_float(&(weather -> wind.gust), tokens, "gust");
-    free(tokens);
+    tokens = NULL;
     
     json_object_object_get_ex(parsed, "clouds", &tokens);
     parse_int32(&(weather -> clouds.all), tokens, "all");
-    free(tokens);
+    tokens = NULL;
     
     parse_int32(&(weather -> dt), parsed, "dt");
     
@@ -97,12 +91,14 @@ int parse_weather_json(char* buffer, WeartherInfo_t* weather) {
     parse_string(&(weather -> sys.country), tokens, "country");
     parse_int64(&(weather -> sys.sunrise), tokens, "sunrise");
     parse_int64(&(weather -> sys.sunset), tokens, "sunset");
-    free(tokens);
+    tokens = NULL;
     
     parse_int64(&(weather -> timezone), parsed, "timezone");
     parse_int64(&(weather -> id), parsed, "id");
     parse_string(&(weather -> name), parsed, "name");
     parse_int32(&(weather -> cod), parsed, "cod");
+    
+    json_object_put(parsed);
     
     return 0;
 }

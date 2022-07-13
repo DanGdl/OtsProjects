@@ -7,8 +7,8 @@
 #include "parser_json.h"
 #include "weather.h"
 
-
-#define URL_REQUEST "http://api.openweathermap.org/data/2.5/weather?appid=10ffe9e6913b2ac1529992c5618ca106&units=metric&q=%s"
+// ./weather Jerusalem 10ffe9e6913b2ac1529992c5618ca106
+#define URL_REQUEST "http://api.openweathermap.org/data/2.5/weather?units=metric&q=%s&appid=%s"
 #define BUFFER_SIZE 1024
 
 typedef struct UrlData {
@@ -59,15 +59,18 @@ int main(int argc, char* argv[]) {
     if (argc < 2) {
         printf("Please add a city name as parameters\n");
         return 0;
+    } else if (argc < 3) {
+        printf("Please add a appid token as parameter\n");
+        return 0;
     }
-    const int size = strlen(URL_REQUEST) + strlen(argv[1]);
+    const int size = strlen(URL_REQUEST) + strlen(argv[1]) +  + strlen(argv[2]);
     char* url = NULL;
     url = calloc(sizeof(*url), size + 1);
     if (url == NULL) {
        printf("Failed to allocate memory for url\n");
        return 0;
     }
-    sprintf(url, URL_REQUEST, argv[1]);
+    sprintf(url, URL_REQUEST, argv[1], argv[2]);
     
     CURL* curl = curl_easy_init();
     if(curl == NULL) {
@@ -95,6 +98,20 @@ int main(int argc, char* argv[]) {
         WeartherInfo_t weather;
         if (parse_weather_json(data.data, &weather) == 0) {
             print_weather(&weather);
+            
+            for(int i = 0; i < weather.size_weathers; i++) {
+                free(weather.weathers[i].main);
+                free(weather.weathers[i].description);
+                
+                weather.weathers[i].main = NULL;
+                weather.weathers[i].description = NULL;
+            }
+            free(weather.weathers);
+            free(weather.base);
+            free(weather.sys.country);
+            free(weather.name);
+            weather.sys.country = NULL;
+            weather.name = NULL;
         } else {
             printf("Failed to failed to parse json)\n");
         }

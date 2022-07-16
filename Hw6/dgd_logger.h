@@ -3,7 +3,7 @@
 #define H_DGD_LOGGER
 
 #define ERR_TIME_FAIL       -1
-
+#define ERR_BAD_LOGGER      -2
 
 #define INFO                "[INFO_]: "
 #define DEBUG               "[DEBUG]: "

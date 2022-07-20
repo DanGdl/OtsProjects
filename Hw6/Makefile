@@ -5,7 +5,7 @@ lib_dgd_logger: dgd_logger.o
 	ar cr dgd_logger.a dgd_logger.o
 
 dgd_logger: dgd_logger.c
-	gcc -Wall -Wextra -Wpedantic -std=c11 dgd_logger.c -o dgd_logger.o
+	gcc -rdynamic -Wall -Wextra -Wpedantic -std=c11 dgd_logger.c -o dgd_logger.o
 
 all: test_dgd_logger
 

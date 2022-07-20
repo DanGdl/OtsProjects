@@ -27,10 +27,7 @@ DgdLogger_t* DgdLog_init(char* log_file_path) {
     }
     struct stat stats;
     if (stat(log_file_path, &stats) == 0) {
-        if (S_ISDIR(stats.st_mode)) {
-            printf("File is directory, path %s\n", log_file_path);
-            return NULL;
-        } else if (!S_ISREG(stats.st_mode)) {
+        if (!S_ISREG(stats.st_mode)) {
             printf("File is not regular file, path %s\n", log_file_path);
             return NULL;
         }
@@ -39,10 +36,12 @@ DgdLogger_t* DgdLog_init(char* log_file_path) {
     DgdLogger_t* logger = NULL;
     logger = calloc(sizeof(*logger), 1);
     if (logger == NULL) {
+        printf("Can't allocate memory for logger\n");
         return NULL;
     }
     logger -> p_file = fopen(log_file_path, "ar");
     if (logger -> p_file == NULL) {
+        printf("Can't open a file, path %s\n", log_file_path);
         return NULL;
     }
     return logger;
@@ -79,9 +78,9 @@ size_t write_log(DgdLogger_t* logger, const char* const tag, const char* const m
 
     size_t consumed = 0;
     if (message == NULL || strlen(message) == 0) {
-        consumed = fprintf(logger -> p_file, "%s%03ld %s %s:%d %s\n", &buf[0], now % 1000, tag, filename, line, func_name);
+        consumed = fprintf(logger -> p_file, "%s%03ld %s %s:%d %s\n", (char*) &buf, now % 1000, tag, filename, line, func_name);
     } else {
-        consumed = fprintf(logger -> p_file, "%s%03ld %s %s:%d %s %s\n", &buf[0], now % 1000, tag, filename, line, func_name, message);
+        consumed = fprintf(logger -> p_file, "%s%03ld %s %s:%d %s %s\n", (char*) &buf, now % 1000, tag, filename, line, func_name, message);
     }
     return consumed;
 }

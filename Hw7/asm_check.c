@@ -11,8 +11,14 @@ int8_t data[] = { 4, 8, 15, 16, 23, 42 };
 int data_length = sizeof(data) / sizeof(*data);
 
 
+typedef struct LinkedList {
+    uint8_t value;
+    struct LinkedList* next;
+} LinkedList_t;
 
-void m(int16_t** value);
+
+
+void m(LinkedList_t* list);
 
 
 void print_int(int64_t value) {
@@ -26,65 +32,64 @@ int p(int8_t* value) {
     return (*value) & 1; // check is not-even
 }
 
-void add_element(int8_t first, int16_t** array) {
-    (*array) = malloc(16);
-    if ((*array) == NULL) {
+void add_element(int8_t value, LinkedList_t** list) {
+    (*list) = malloc(sizeof(**list));
+    if ((*list) == NULL) {
         exit(-1);
     }
-    (*array)[0] = first;
-    (*array)[1] = 0;
+    (*list) -> value = value;
+    (*list) -> next = NULL;
 }
 
-void m(int16_t** value) {
-    if (value == NULL || *value == 0) {
+void m(LinkedList_t* list) {
+    if (list == NULL) {
         return;
     }
-    print_int(**value);
-    m(value - 1);
+    print_int(list -> value);
+    m(list -> next);
 }
 
-void f(int8_t* source_value, int16_t** value) {
+void f(int8_t* source_value, LinkedList_t** list) {
     if (source_value == NULL || *source_value == 0) {
         return;
     }
-    f(source_value + 1, value);
+    f(source_value + 1, list);
     if (p(source_value)) {
-        while (*value != NULL) {
-            value = value - 1;
+        LinkedList_t** current = list;
+        while(*current != NULL) {
+            current = &((*current) -> next);
         }
-        add_element(*source_value, value);
+        add_element(*source_value, current);
     }
 }
 
 int main(void) {
     int lengh = data_length;
-    int16_t* array[data_length + 1];
+    LinkedList_t* list = NULL;
+    LinkedList_t** current = &list;
     do {
-        add_element(data[lengh - 1], &array[data_length - lengh + 1]);
+        add_element(data[lengh - 1], current);
+        current = &((*current) -> next);
         lengh--;
     } while (lengh != 0);
 
-    m(array + data_length);
+    m(list);
     puts("");
 
-    for (int i = 0; i < data_length + 1; i++) {
-        if (array[i] == NULL) {
-            continue;
-        }
-        free(array[i]);
-        array[i] = NULL;
+    while (list != NULL) {
+        LinkedList_t* node = list;
+        list = list -> next;
+        free(node);
     }
 
-    f(data, array + data_length);
-    m(array + data_length);
+    f(data, &list);
+    m(list);
     puts("");
 
-    for (int i = 0; i < data_length + 1; i++) {
-        if (array[i] == NULL) {
-            continue;
-        }
-        free(array[i]);
-        array[i] = NULL;
+    while (list != NULL) {
+        LinkedList_t* node = list;
+        list = list -> next;
+        free(node);
     }
     return 0;
 }

@@ -66,31 +66,12 @@ int main(int argc, char* argv[]) {
             return 0;
         }
         crc remainder = 0;
-        for (long int i = 0; i < stats.st_size; ++i) {
-            const long unsigned int remain = stats.st_size - i;
-            if (sizeof(uint64_t) < remain) {
-                uint64_t signature = 0;
-                memcpy(&signature, mapped + i, sizeof(signature));
-                remainder = calculate_crc(remainder, (uint8_t*) &signature, sizeof(signature));
-            } else if (sizeof(uint32_t) < remain) {
-                printf("32 bytes left\n");
-                uint32_t signature = 0;
-                memcpy(&signature, mapped + i, sizeof(signature));
-                remainder = calculate_crc(remainder, (uint8_t*) &signature, sizeof(signature));
-            } else if (sizeof(uint16_t) < remain) {
-                printf("16 bytes left\n");
-                uint16_t signature = 0;
-                memcpy(&signature, mapped + i, sizeof(signature));
-                remainder = calculate_crc(remainder, (uint8_t*) &signature, sizeof(signature));
-            } else {
-                printf("8 bytes left\n");
-                uint8_t signature = 0;
-                memcpy(&signature, mapped + i, sizeof(signature));
-                remainder = calculate_crc(remainder, &signature, sizeof(signature));
-            }
-        }
+		for (long int i = 0; i < stats.st_size; ++i) {
+			remainder = calculate_crc(remainder, mapped + i, sizeof(*mapped));
+		}
 
-        printf("CRC32 remainder for file %s: %d\n", path, remainder);
+        printf("CRC32 remainder  for file %s: %d\n", path, remainder);
+
         if (munmap(mapped, stats.st_size) != 0) {
             printf("Could not munmap\n");
         }

@@ -3,9 +3,11 @@
 
 #define FILE_NOT_FOUND -2
 #define DAEMON_MODE "-d"
-#define PATH_CONFIG "/etc/ots_daemon.conf"
-#define NAME_SOCKET "/home/max/otus/OtsProjects/Hw9/ots_daemon.socket" // tmp. select proper path
 
+#define PATH_CONFIG "/etc/ots_daemon.conf"
+
+#define TAG_CONFIG_LOCK "lockfile"
+#define TAG_CONFIG_SOCKET "socket"
+#define TAG_CONFIG_FILE "checkfile"
 
 #endif
-

@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
     /* Connect socket to socket address. */
 
     addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, NAME_SOCKET, sizeof(addr.sun_path) - 1);
+    strncpy(addr.sun_path, "/home/max/otus/OtsProjects/Hw9/ots_daemon.socket", sizeof(addr.sun_path) - 1);
 
     const int size = offsetof(struct sockaddr_un, sun_path) + strlen(addr.sun_path);
 

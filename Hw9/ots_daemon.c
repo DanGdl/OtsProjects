@@ -21,11 +21,13 @@
 
 
 #define SIZE_BUFFER 128
-#define LOCKFILE "/var/run/ots_daemon.pid"
 #define LOCKMODE (S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH)
 
 
-char filename[PATH_MAX - 1] = { '\0' };
+char filename[PATH_MAX] = { '\0' };
+char lock_filename[PATH_MAX] = { '\0' };
+char socket_filename[PATH_MAX] = { '\0' };
+
 int lock_fd = -1;
 int socket_descriptor = -1;
 int has_interrupt = 0;
@@ -51,18 +53,18 @@ int unlockfile(int fd) {
 
 int lock_file(void) {
     char buf[16];
-    lock_fd = open(LOCKFILE, O_RDWR|O_CREAT, LOCKMODE);
+    lock_fd = open(lock_filename, O_RDWR|O_CREAT, LOCKMODE);
     if (lock_fd < 0) {
-        printf("Can't open %s: %s\n", LOCKFILE, strerror(errno));
+        printf("Can't open %s: %s\n", lock_filename, strerror(errno));
         return -1;
     }
     if (lockfile(lock_fd) < 0) {
         if (errno == EACCES || errno == EAGAIN) {
-            printf("Can't lock %s: %s\n", LOCKFILE, strerror(errno));
+            printf("Can't lock %s: %s\n", lock_filename, strerror(errno));
             close(lock_fd);
             return 1;
         }
-        printf("Can't lock %s: %s\n", LOCKFILE, strerror(errno));
+        printf("Can't lock %s: %s\n", lock_filename, strerror(errno));
         return -1;
     }
     ftruncate(lock_fd, 0);
@@ -78,28 +80,51 @@ int read_config() {
         printf("Fail to read config\n");
         return -1;
     }
-    fgets((char*) &filename, PATH_MAX - 1, f);
-    // remove new lines, it leads to bugs
-    char* position = NULL;
-    do {
-        position = strchr((char*) &filename, '\n');
-        if (position != NULL) {
-            *position = '\0';
+    char buffer[PATH_MAX] = { '\0' };
+    char* line = (char*) &buffer;
+    const size_t size = sizeof(buffer)/sizeof(*line) - 1;
+    while (fgets(line, size, f) != NULL) {
+        // remove new lines, it leads to bugs
+        char* position = NULL;
+        do {
+            position = strchr(line, '\n');
+            if (position != NULL) {
+                *position = '\0';
+            }
+        } while(position != NULL);
+
+        // find space in middle, split by space
+        position = strchr(line, ' ');
+        if(position == NULL) {
+            printf("Unknown config: %s\n", line);
+            continue;
         }
-    } while(position != NULL);
+        const int idx = position - line;
+        line[idx] = '\0';
+        const char* value = line + idx + 1;
+
+        char* storage = NULL;
+        if (strcmp(TAG_CONFIG_LOCK, line) == 0) {
+            storage = (char*) &lock_filename;
+        } else if (strcmp(TAG_CONFIG_SOCKET, line) == 0) {
+            storage = (char*) &socket_filename;
+        } else if (strcmp(TAG_CONFIG_FILE, line) == 0) {
+           storage = (char*) &filename;
+        } else {
+            printf("Unknown tag: %s\n", line);
+            continue;
+        }
+        memcpy(storage, value, strlen(value));
+    }
+
     fclose(f);
     return 0;
 }
 
 
 int setup_socket() {
-    if (read_config() < 0) {
-        printf("Fail to read config\n");
-        return -1;
-    }
-
     // reuse socket
-    unlink(NAME_SOCKET);
+    unlink(socket_filename);
 
     socket_descriptor = socket(AF_UNIX, SOCK_STREAM, 0);
     if (socket_descriptor < 0) {
@@ -110,12 +135,11 @@ int setup_socket() {
     struct sockaddr_un socket;
     memset(&socket, 0, sizeof(socket));
     socket.sun_family = AF_UNIX;
-    strncpy(socket.sun_path, NAME_SOCKET, sizeof(socket.sun_path) - 1);
+    strncpy(socket.sun_path, socket_filename, sizeof(socket.sun_path) - 1);
 
     const int size = offsetof(struct sockaddr_un, sun_path) + strlen(socket.sun_path);
     int ret = bind(socket_descriptor, (struct sockaddr *)&socket, size);
     if (ret < 0) {
-//     if (bind(socket_descriptor, (struct sockaddr *)&socket, sizeof(socket)) < 0) {
         printf("Fail to bind local socket %s\n", strerror(errno));
         return -1;
     }
@@ -136,10 +160,14 @@ int setup_socket() {
 
         // get size of file and send it
         struct stat stats;
-        stat(filename, &stats);
-        sprintf(buffer, "%ld", stats.st_size);
-
-        ret = write(data_socket, buffer, sizeof(buffer));
+        long int size = -1;
+        if (stat(filename, &stats) == -1) {
+            printf("Fail to get stats for file %s: %s\n", filename, strerror(errno));
+        } else {
+            size = stats.st_size;
+        }
+        size = snprintf(buffer, sizeof(buffer)/sizeof(buffer[0]), "%ld", size);
+        ret = write(data_socket, buffer, size);
         if (ret == -1) {
             printf("Fail to write into local socket\n");
             return -1;
@@ -155,7 +183,7 @@ int setup_socket() {
     if (socket_descriptor > 0) {
         close(socket_descriptor);
         socket_descriptor = -1;
-        unlink(NAME_SOCKET);
+        unlink(socket_filename);
     }
 
     return 0;
@@ -169,7 +197,7 @@ void handle_shutdown(int sig) {
     }
 	if (socket_descriptor > 0) {
         close(socket_descriptor);
-        unlink(NAME_SOCKET);
+        unlink(socket_filename);
     }
     if (lock_fd > 0) {
 		unlockfile(lock_fd);
@@ -247,6 +275,9 @@ void daemonize() {
         printf("Wrong file descriptors fd0 = %d, fd1 = %d, fd2 = %d\n", fd0, fd1, fd2);
     }
 
+    if (lock_file() != 0) {
+        exit(0);
+    }
     setup_socket();
 }
 
@@ -256,13 +287,17 @@ int main(int argc, char* argv[]) {
     if (catch_signal(SIGINT, handle_shutdown) == -1) {
 		printf("Fail to set interrupt handler\n");
 	}
-    if (lock_file() != 0) {
-        return 0;
+	if (read_config() < 0) {
+        printf("Fail to read config\n");
+        return -1;
     }
 
     if (argc > 1 && strcmp(argv[1], DAEMON_MODE) == 0) {
         daemonize();
     } else {
+        if (lock_file() != 0) {
+            return 0;
+        }
         setup_socket();
     }
     unlockfile(lock_fd);

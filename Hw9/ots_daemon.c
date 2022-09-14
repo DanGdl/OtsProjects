@@ -226,6 +226,16 @@ void handle_SIGHUP(int sig) {
 }
 
 
+
+void start_service() {
+    if (lock_file() != 0) {
+        exit(0);
+    }
+    setup_socket();
+    unlockfile(lock_fd);
+    close(lock_fd);
+}
+
 void daemonize() {
 
     umask(0);
@@ -275,10 +285,7 @@ void daemonize() {
         printf("Wrong file descriptors fd0 = %d, fd1 = %d, fd2 = %d\n", fd0, fd1, fd2);
     }
 
-    if (lock_file() != 0) {
-        exit(0);
-    }
-    setup_socket();
+    start_service();
 }
 
 
@@ -295,12 +302,7 @@ int main(int argc, char* argv[]) {
     if (argc > 1 && strcmp(argv[1], DAEMON_MODE) == 0) {
         daemonize();
     } else {
-        if (lock_file() != 0) {
-            return 0;
-        }
-        setup_socket();
+        start_service();
     }
-    unlockfile(lock_fd);
-    close(lock_fd);
     return 0;
 }

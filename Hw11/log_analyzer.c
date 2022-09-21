@@ -181,6 +181,7 @@ void collect_statistics(uint8_t* mapping, long int mapping_size) {
             long int traffic = get_traffic(mapping, quotes_indexes[1], end_idx, (int*) &quotes_indexes);
             char* referer = get_referer(mapping, quotes_indexes[1], end_idx);
             
+            // TODO: put all results in local map and then megre it to main map
             if (pthread_mutex_lock(&mutex) == 0) {
                 Statistics_t* value = HashMap_get(map, url);
                 if (value == NULL) {

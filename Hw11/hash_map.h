@@ -13,11 +13,12 @@
 #define RESULT_ADD_NODE_ALREDY_EXIST 1
 
 typedef struct HashMap HashMap_t;
-
+typedef size_t (*map_hasher)(const void* const key);
+typedef size_t (*map_key_comparator)(const void* const key);
 
 HashMap_t* HashMap_create(
-	size_t (*hash_func)(const void* const key),
-	int (*key_compare)(const void* const key1, const void* const key2),
+	size_t (*map_hasher)(const void* const key),
+	size_t (*map_key_comparator)(const void* const key),
 	void (*key_free)(void* key)
 );
 

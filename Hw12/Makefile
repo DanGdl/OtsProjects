@@ -1,5 +1,5 @@
 telehack_client: telehack_client.c
-	gcc -Wall -Wextra -Wpedantic -std=c11 telehack_client.c -o telehack_client
+	gcc -g -Wall -Wextra -Wpedantic -std=c11 telehack_client.c -o telehack_client
 
 all: telehack_client
 

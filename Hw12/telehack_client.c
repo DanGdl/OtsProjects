@@ -17,9 +17,11 @@
 #include <stdint.h>
 
 #define URL "telehack.com"
-#define PORT "47"
+#define PORT "23"
 
-#define CMD_TELEHACK "figlet /%s %s"
+#define CMD_TELEHACK "figlet /%s %s\r\n"
+#define EOF_DATA "\r\n."
+
 
 const char* const supported_fonts[] = { "3-d", "3x5", "5lineoblique", "acrobatic",
 		"alligator", "alligator2", "alphabet", "vatar", "banner", "banner3",
@@ -65,7 +67,7 @@ int open_client_socket(const char *address, const char *port) {
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_protocol = 0;
-	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_ALL;
 
 	int code = getaddrinfo(address, port, &hints, &res);
@@ -117,7 +119,7 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	if (!found) {
-		printf("Unsupported font %s. Must be onr of the list:\n", font);
+		printf("Unsupported font %s. Must be one of the list:\n", font);
 		for (uint32_t i = 0; i < sizeof(supported_fonts) / sizeof(supported_fonts[0]); i++) {
 			if (i % 4 == 0) {
 				printf("%s\n", supported_fonts[i]);
@@ -128,7 +130,7 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
-	int socket = open_client_socket(URL, NULL);
+	int socket = open_client_socket(URL, PORT);
 	if (socket > 0) {
         while(1) {
             int command_size = strlen(CMD_TELEHACK) + strlen(font) + strlen(text) + 1 - 4;
@@ -142,22 +144,40 @@ int main(int argc, char *argv[]) {
                 printf("Failed to setup command\n");
                 break;
             }
-            if (network_send(socket, command, command_size) == -1) {
-                log_error("Failed to send command");
-                break;
-            }
+
             uint8_t buffer[256] = { '\0' };
-            int total_received = 0;
             int received = 0;
-            do {
+            while(1) {
+            	received = network_receive(socket, buffer, sizeof(buffer) / sizeof(buffer[0]) - 1);
+				if (received < 0) {
+					continue;
+				}
+				buffer[received] = '\0';
+				printf("%s", buffer);
+				if (strstr((char*) buffer, EOF_DATA) != NULL) {
+					break;
+				} else {
+					memset(buffer, '\0', sizeof(buffer) / sizeof(buffer[0]));
+				}
+            }
+
+            if (network_send(socket, command, command_size) == -1) {
+				log_error("Failed to send command");
+				break;
+			}
+            while(1) {
                 received = network_receive(socket, buffer, sizeof(buffer) / sizeof(buffer[0]) - 1);
-                printf("Received: %d\n", received);
-                if (received > 0) {
-                    total_received += received;
-                    buffer[received] = '\0';
-                    printf("%s", buffer);
+                if (received < 0) {
+                	continue;
                 }
-            } while (received);
+				buffer[received] = '\0';
+				printf("%s", buffer);
+				if (strstr((char*) buffer, EOF_DATA) != NULL) {
+					break;
+				} else {
+					memset(buffer, '\0', sizeof(buffer) / sizeof(buffer[0]));
+				}
+            }
             break;
         }
 	}
